@@ -1,0 +1,124 @@
+global
+    maxconn            10000
+    log                 stdout  format raw  local0  info    
+    pidfile            /tmp/haproxy.pid
+    stats timeout      10m
+
+defaults
+    mode               http
+    log                global
+    {# option             httplog #}
+    option             dontlognull
+    {# option             forwardfor except 127.0.0.0/8 #}
+    option             redispatch
+    retries            3
+    timeout connect    10s
+    timeout client     300s
+    timeout server     300s
+    maxconn            5000
+
+resolvers mydns
+    nameserver dns1 {{dns.host}}:{{dns.port}}
+    accepted_payload_size 8192
+
+backend be_stats_site
+  stats uri /
+  stats auth {{haproxy.stats.user}}:{{haproxy.stats.password}}
+
+frontend fe_http_plain
+  bind *:80
+  mode tcp
+  tcp-request       inspect-delay     5s
+  use_backend       be_stats_site     if { hdr(host)      -i {{haproxy.stats.host}}       } 
+  {% for item in labs %}
+  use_backend       be_http_{{item.name}}     if { hdr_end(host)  -i .apps.{{item.name + '.' + srv_domain}}  }
+  {% endfor %}
+
+  default_backend   be_stats_site
+
+frontend fe_http_ssl
+  bind *:443
+  mode tcp
+  tcp-request       inspect-delay     5s
+  tcp-request       content accept    if { req_ssl_hello_type 1 }
+
+  {% for item in labs %}
+  use_backend       be_https_{{item.name}}    if { req_ssl_sni -m end .apps.{{item.name + '.' + srv_domain}} }
+  {% endfor %}
+
+frontend fe_machineconfig
+  bind *:22623
+  mode tcp
+  tcp-request       inspect-delay     5s
+  
+  {% for item in labs %}
+  # Backends {{item.name}}
+  use_backend       be_machineconfig_{{item.name}}    if { hdr_end(host) -i console.{{item.name + '.' + srv_domain}} }
+  use_backend       be_machineconfig_{{item.name}}    if { hdr_end(host) -i api.{{item.name + '.' + srv_domain}}     }
+  use_backend       be_machineconfig_{{item.name}}    if { hdr_end(host) -i api-int.{{item.name + '.' + srv_domain}} }
+
+  {% endfor %}
+
+  default_backend   be_stats_site
+
+frontend fe_http_api
+  bind *:6443
+  mode tcp
+  tcp-request       inspect-delay     5s
+  tcp-request       content accept    if { req_ssl_hello_type 1 }
+  
+{% for item in labs %}
+  # Backends {{item.name}}
+  use_backend       be_api_{{item.name}}    if { req_ssl_sni -i console.{{item.name + '.' + srv_domain}} }
+  use_backend       be_api_{{item.name}}    if { req_ssl_sni -i api.{{item.name + '.' + srv_domain}} }
+  use_backend       be_api_{{item.name}}    if { req_ssl_sni -i api-int.{{item.name + '.' + srv_domain}} }
+
+{% endfor %}
+
+  default_backend   be_stats_site
+
+
+frontend fe_http_api_old
+  bind *:8443
+  mode tcp
+  tcp-request       inspect-delay     5s
+  tcp-request       content accept    if { req_ssl_hello_type 1 }
+  
+{% for item in labs %}
+  # Backends {{item.name}}
+  use_backend       be_api_old_{{item.name}}    if { req_ssl_sni -i console.{{item.name + '.' + srv_domain}} }
+  use_backend       be_api_old_{{item.name}}    if { req_ssl_sni -i api.{{item.name + '.' + srv_domain}} }
+  use_backend       be_api_old_{{item.name}}    if { req_ssl_sni -i api-int.{{item.name + '.' + srv_domain}} }
+
+{% endfor %}
+
+  default_backend   be_stats_site
+
+
+{% for item in labs %}
+
+backend be_api_old_{{item.name}}
+    balance            roundrobin
+    server-template {{item.name}}-ctlplain- 0-{{item.masters_qti}} _ctlplain-{{item.name}}._tcp.{{srv_domain}}:8443 resolvers mydns check init-addr none
+
+backend be_api_{{item.name}}
+    balance            roundrobin
+    server-template {{item.name}}-ctlplain- 0-{{item.masters_qti}} _ctlplain-{{item.name}}._tcp.{{srv_domain}}:6443 resolvers mydns check init-addr none
+
+backend be_machineconfig_{{item.name}}
+    balance            roundrobin
+    server-template {{item.name}}-ctlplain- 0-{{item.masters_qti}} _ctlplain-{{item.name}}._tcp.{{srv_domain}}:22623 resolvers mydns check init-addr none
+
+backend be_etcd_{{item.name}}
+    balance            roundrobin
+    server-template {{item.name}}-ctlplain- 0-{{item.masters_qti}} _ctlplain-{{item.name}}._tcp.{{srv_domain}}:2380 resolvers mydns check init-addr none
+
+backend be_http_{{item.name}}
+    balance            roundrobin
+    server-template {{item.name}}-router-http- 0-{{item.workers_qti - 1}} _workers-{{item.name}}._tcp.{{srv_domain}}:80 resolvers mydns check init-addr none
+
+backend be_https_{{item.name}}
+    balance            roundrobin
+    server-template {{item.name}}-router-https- 0-{{item.workers_qti - 1}} _workers-{{item.name}}._tcp.{{srv_domain}}:443 resolvers mydns check init-addr none
+{% endfor %}
+

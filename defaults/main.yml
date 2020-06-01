@@ -1,0 +1,28 @@
+---
+# defaults file for haproxy-gpslab
+
+
+dns: 
+  host: dns.my.domain.local
+  port: 53
+
+srv_domain: my.domain.local
+
+labs:
+  - name: labname
+    base: labname.my.domain.local
+    masters_qti: 3
+    workers_qti: 5
+ 
+haproxy:
+  stats:
+    host: stats.my.domain.local
+    user: admin
+    password: password
+
+firewall_open_ports:
+  - 6443/tcp
+  - 8443/tcp
+  - 80/tcp
+  - 443/tcp
+  - 22623/tcp

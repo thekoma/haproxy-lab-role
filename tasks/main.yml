@@ -1,0 +1,29 @@
+---
+# tasks file for haproxy-gpslab
+- name: Install haproxy
+  yum:
+    name: haproxy
+    state: present
+
+- name: open firewall ports
+  loop: {{firewall_open_ports}}
+  firewalld:
+    port: {{item}}
+    permanent: yes
+    state: enabled
+    immediate: yes
+
+- name: Enable firewalld
+  service:
+    name: firewalld
+    state: started
+    enabled: yes
+
+- name: Create HaProxy conf
+  template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: haproxy
+    mode: '0644'
+
