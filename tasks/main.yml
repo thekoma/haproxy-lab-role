@@ -5,19 +5,25 @@
     name: haproxy
     state: present
 
-- name: open firewall ports
-  loop: {{firewall_open_ports}}
-  firewalld:
-    port: {{item}}
-    permanent: yes
-    state: enabled
-    immediate: yes
+- name: enable binding on any port haproxy
+  seboolean:
+    name: haproxy_connect_any
+    state: yes
+    persistent: yes
 
 - name: Enable firewalld
   service:
     name: firewalld
     state: started
     enabled: yes
+
+- name: open firewall ports
+  loop: "{{firewall_open_ports}}"
+  firewalld:
+    port: "{{item}}"
+    permanent: yes
+    state: enabled
+    immediate: yes
 
 - name: Create HaProxy conf
   template:
@@ -27,3 +33,8 @@
     group: haproxy
     mode: '0644'
 
+- name: Enable and reboot haproxy
+  service:
+    name: haproxy
+    state: restarted
+    enabled: yes
