@@ -25,7 +25,7 @@ backend be_stats_site
   stats uri /
   stats auth {{haproxy.stats.user}}:{{haproxy.stats.password}}
 
-frontend fe_http_plain
+frontend fe_http_plane
   bind *:80
   mode tcp
   tcp-request       inspect-delay     5s
@@ -99,19 +99,19 @@ frontend fe_http_api_old
 
 backend be_api_old_{{item.name}}
     balance            roundrobin
-    server-template {{item.name}}-ctlplain- 0-{{item.masters_qti}} _ctlplain-{{item.name}}._tcp.{{srv_domain}}:8443 resolvers mydns check init-addr none
+    server-template {{item.name}}-ctlplane- 0-{{item.masters_qti}} _ctlplane-{{item.name}}._tcp.{{srv_domain}}:8443 resolvers mydns check init-addr none
 
 backend be_api_{{item.name}}
     balance            roundrobin
-    server-template {{item.name}}-ctlplain- 0-{{item.masters_qti}} _ctlplain-{{item.name}}._tcp.{{srv_domain}}:6443 resolvers mydns check init-addr none
+    server-template {{item.name}}-ctlplane- 0-{{item.masters_qti}} _ctlplane-{{item.name}}._tcp.{{srv_domain}}:6443 resolvers mydns check init-addr none
 
 backend be_machineconfig_{{item.name}}
     balance            roundrobin
-    server-template {{item.name}}-ctlplain- 0-{{item.masters_qti}} _ctlplain-{{item.name}}._tcp.{{srv_domain}}:22623 resolvers mydns check init-addr none
+    server-template {{item.name}}-ctlplane- 0-{{item.masters_qti}} _ctlplane-{{item.name}}._tcp.{{srv_domain}}:22623 resolvers mydns check init-addr none
 
 backend be_etcd_{{item.name}}
     balance            roundrobin
-    server-template {{item.name}}-ctlplain- 0-{{item.masters_qti}} _ctlplain-{{item.name}}._tcp.{{srv_domain}}:2380 resolvers mydns check init-addr none
+    server-template {{item.name}}-ctlplane- 0-{{item.masters_qti}} _ctlplane-{{item.name}}._tcp.{{srv_domain}}:2380 resolvers mydns check init-addr none
 
 backend be_http_{{item.name}}
     balance            roundrobin
