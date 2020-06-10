@@ -27,14 +27,12 @@ backend be_stats_site
 
 frontend fe_http_plane
   bind *:80
-  mode tcp
+  mode http
   tcp-request       inspect-delay     5s
   use_backend       be_stats_site     if { hdr(host)      -i {{haproxy.stats.host}}       } 
-  {% for item in labs %}
+{% for item in labs %}
   use_backend       be_http_{{item.name}}     if { hdr_end(host)  -i .apps.{{item.name + '.' + public_base}}  }
-  {% endfor %}
-
-  default_backend   be_stats_site
+{% endfor %}
 
 frontend fe_http_ssl
   bind *:443
@@ -42,9 +40,9 @@ frontend fe_http_ssl
   tcp-request       inspect-delay     5s
   tcp-request       content accept    if { req_ssl_hello_type 1 }
 
-  {% for item in labs %}
+{% for item in labs %}
   use_backend       be_https_{{item.name}}    if { req_ssl_sni -m end .apps.{{item.name + '.' + public_base}} }
-  {% endfor %}
+{% endfor %}
 
 frontend fe_machineconfig
   bind *:22623
@@ -52,11 +50,10 @@ frontend fe_machineconfig
   tcp-request       inspect-delay     5s
   tcp-request       content accept    if { req_ssl_hello_type 1 }
 
-  {% for item in labs %}
+{% for item in labs %}
   # Backends {{item.name}}
   use_backend       be_machineconfig_{{item.name}}    if { req_ssl_sni -i api-int.{{item.name + '.' + public_base}} }
-
-  {% endfor %}
+{% endfor %}
 
 
 frontend fe_http_api
@@ -70,7 +67,6 @@ frontend fe_http_api
   use_backend       be_api_{{item.name}}    if { req_ssl_sni -i console.{{item.name + '.' + public_base}} }
   use_backend       be_api_{{item.name}}    if { req_ssl_sni -i api.{{item.name + '.' + public_base}} }
   use_backend       be_api_{{item.name}}    if { req_ssl_sni -i api-int.{{item.name + '.' + public_base}} }
-
 {% endfor %}
 
 
@@ -86,7 +82,6 @@ frontend fe_http_api_old
   use_backend       be_api_old_{{item.name}}    if { req_ssl_sni -i console.{{item.name + '.' + public_base}} }
   use_backend       be_api_old_{{item.name}}    if { req_ssl_sni -i api.{{item.name + '.' + public_base}} }
   use_backend       be_api_old_{{item.name}}    if { req_ssl_sni -i api-int.{{item.name + '.' + public_base}} }
-
 {% endfor %}
 
 
@@ -114,7 +109,7 @@ backend be_etcd_{{item.name}}
     server-template {{item.name}}-ctlplane- 0-{{item.masters_qti}} _etcd-server-ssl._tcp.{{item.name + '.' + srv_base}} resolvers mydns check init-addr none
 
 backend be_http_{{item.name}}
-    mode tcp
+    mode http
     balance            roundrobin
     server-template {{item.name}}-router-http- 0-{{item.workers_qti - 1}} _workers-http._tcp.{{item.name + '.' + srv_base}} resolvers mydns check init-addr none
 
